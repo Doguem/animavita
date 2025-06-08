@@ -2,7 +2,7 @@ import UserRepository from '../../core/application/repositories/user.repository'
 import { InjectModel } from '@nestjs/mongoose';
 import { MongoUser, UserDocument } from '../mongo/schemas/user.schema';
 import { Model } from 'mongoose';
-import { User } from '../../core/domain/user/user';
+import { Role, User } from '../../core/domain/user/user';
 
 export class MongoUserRepository implements UserRepository {
   constructor(
@@ -10,11 +10,7 @@ export class MongoUserRepository implements UserRepository {
     private readonly userModel: Model<UserDocument>,
   ) {}
 
-  async getById(id: string): Promise<User> {
-    const document = await this.userModel.findById(id);
-
-    if (!document) return null;
-
+  private _mapToUser(document: UserDocument): User {
     return User.create({
       id: document.id,
       email: document.email,
@@ -22,6 +18,7 @@ export class MongoUserRepository implements UserRepository {
       name: document.name,
       phoneNumber: document.phoneNumber,
       photoUri: document.photoUri,
+      role: document.role as Role,
       location: document.location
         ? {
             longitude: document.location.coordinates[0],
@@ -31,25 +28,20 @@ export class MongoUserRepository implements UserRepository {
     });
   }
 
+  async getById(id: string): Promise<User> {
+    const document = await this.userModel.findById(id);
+
+    if (!document) return null;
+
+    return this._mapToUser(document);
+  }
+
   async getByEmail(email: string): Promise<User> {
     const document = await this.userModel.findOne({ email });
 
     if (!document) return null;
 
-    return User.create({
-      id: document.id,
-      email: document.email,
-      password: document.password,
-      name: document.name,
-      phoneNumber: document.phoneNumber,
-      photoUri: document.photoUri,
-      location: document.location
-        ? {
-            longitude: document.location.coordinates[0],
-            latitude: document.location.coordinates[1],
-          }
-        : undefined,
-    });
+    return this._mapToUser(document);
   }
 
   async store(user: User): Promise<void> {
@@ -58,6 +50,7 @@ export class MongoUserRepository implements UserRepository {
       {
         $set: {
           phoneNumber: user.phoneNumber,
+          role: user.role,
           location: {
             type: 'Point',
             coordinates: [user.location.longitude, user.location.latitude],

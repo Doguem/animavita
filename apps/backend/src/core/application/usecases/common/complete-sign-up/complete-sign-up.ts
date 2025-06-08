@@ -5,7 +5,8 @@ import UserRepository, {
 import { Attributes } from '../../../../domain/user/user';
 
 type Input = {
-  location: Attributes['location'];
+  location?: Attributes['location'];
+  role?: string;
 };
 
 @Injectable()
@@ -17,6 +18,7 @@ export default class CompleteSignUp {
   async execute(userId: string, input: Input): Promise<Output> {
     const user = await this.userRepository.getById(userId);
     if (input.location) user.setLocation(input.location);
+    if (input.role) user.assignRole(input.role);
     await this.userRepository.store(user);
 
     return {

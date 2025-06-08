@@ -3,10 +3,11 @@ import { Pet } from '../../../../domain/pet/pet';
 import PetRepository, {
   PET_REPOSITORY,
 } from '../../../repositories/pet.repository';
-import { UserService } from '../../../../../user/user.service';
-import { UserRepository } from '../../../../../user/repositories/user-repository.interface';
+import UserRepository, {
+  USER_REPOSITORY,
+} from '../../../repositories/user.repository';
 
-export type Input = {
+export type PostPetForAdoptionInput = {
   name: string;
   breed: string;
   age: string;
@@ -21,11 +22,21 @@ export type Input = {
 export default class PostPetForAdoption {
   constructor(
     @Inject(PET_REPOSITORY) private readonly petRepository: PetRepository,
-    @Inject(UserService) private readonly userService: UserRepository,
+    @Inject(USER_REPOSITORY) private readonly userRepository: UserRepository,
   ) {}
 
-  async execute(input: Input, ownerEmail: string) {
-    const owner = await this.userService.findByEmail(ownerEmail);
+  async execute(input: PostPetForAdoptionInput, ownerEmail: string) {
+    const user = await this.userRepository.getByEmail(ownerEmail);
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    if (!user.isOwner) {
+      throw new Error('User is not authorized to post a pet for adoption');
+    }
+
+    const owner = user;
 
     const petAttributes = {
       ...input,
